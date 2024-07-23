@@ -293,12 +293,12 @@ int main() {
                 processed_size = 0;
             }
 
-            // 50GiB의 배수가 될 때 TMP_WAF 초기화
+            // 8GiB의 배수가 될 때 TMP_WAF 초기화
             if (tmp_processed_size >= 8L * 1024 * 1024 * 1024) {
 
                 // TMP_WAF 출력 후 tmp_gc_write, tmp_user_write 그리고 tmp_erase 초기화
                 free_tmp(ssd);
-                tmp_processed_size = 0;  // 다음 50GiB를 위한 tmp_processed_size 초기화
+                tmp_processed_size = 0;  // 다음 8GiB를 위한 tmp_processed_size 초기화
             }
 
         }

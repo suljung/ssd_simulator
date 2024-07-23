@@ -42,6 +42,8 @@ typedef struct {
     unsigned long tmp_gc_write;
     unsigned long tmp_user_write;
     unsigned long tmp_erase;
+    unsigned long tmp_valid_pages;
+    unsigned long tmp_total_pages;
 } SSD;
 
 
@@ -173,8 +175,14 @@ void gc(SSD *ssd) {
     int victim_block_index = find_victim_block(ssd);
     Block *victim_block = &ssd->blocks[victim_block_index];
 
-    int i;
-    for (i = 0; i < PAGES_PER_BLOCK; i++) {
+    // 유효 페이지 개수를 누적하여 비율 계산에 사용
+    unsigned long valid_pages_in_victim = victim_block->valid_page_count;
+    unsigned long total_pages_in_victim = PAGES_PER_BLOCK;
+
+    ssd->tmp_valid_pages += valid_pages_in_victim;
+    ssd->tmp_total_pages += total_pages_in_victim;
+
+    for (int i = 0; i < PAGES_PER_BLOCK; i++) {
         if (victim_block->pages[i].is_valid) {
             unsigned long lba = victim_block->pages[i].oob.lba;
             find_free_page(ssd, lba, 1);  // 가비지 컬렉션 쓰기로 기록
@@ -182,7 +190,7 @@ void gc(SSD *ssd) {
     }
 
     // victim 블록의 모든 페이지를 invalid로 설정
-    for (i = 0; i < PAGES_PER_BLOCK; i++) {
+    for (int i = 0; i < PAGES_PER_BLOCK; i++) {
         victim_block->pages[i].is_valid = 0;
     }
 
@@ -195,6 +203,7 @@ void gc(SSD *ssd) {
 
     ssd->tmp_erase++;
 }
+
 
 // LBA를 처리하는 함수
 void process_lba(SSD *ssd, unsigned long lba) {
@@ -219,30 +228,27 @@ void process_lba(SSD *ssd, unsigned long lba) {
     }
 }
 
-// tmp_waf 초기화 함수
-void free_tmp(SSD *ssd){
-    ssd->tmp_gc_write = 0;
-    ssd->tmp_user_write = 0;
-    ssd->tmp_erase = 0; // tmp_erase 초기화
-}
-
 // 유효 데이터 비율을 계산하는 함수 추가
 double calculate_valid_data_ratio(SSD *ssd) {
-    unsigned long total_valid_pages = 0;
-    unsigned long total_pages = 0;
-
-    for (int i = 0; i < BLOCKS_PER_SSD; i++) {
-        total_valid_pages += ssd->blocks[i].valid_page_count;
-        total_pages += PAGES_PER_BLOCK;
-    }
-
-    return (double)total_valid_pages / total_pages;
+    return (double)ssd->tmp_valid_pages / ssd->tmp_total_pages;
 }
+
 
 // 사용된 블록의 개수를 계산하는 함수 추가
 int get_used_block_count(SSD *ssd) {
     return BLOCKS_PER_SSD - ssd->free_block_count;
 }
+
+
+// tmp_waf 초기화 함수 
+void free_tmp(SSD *ssd){
+    ssd->tmp_gc_write = 0;
+    ssd->tmp_user_write = 0;
+    ssd->tmp_erase = 0; // tmp_erase 초기화
+    ssd->tmp_valid_pages = 0; // tmp_valid_pages 초기화
+    ssd->tmp_total_pages = 0; // tmp_total_pages 초기화
+}
+
 
 // I/O 요청을 저장할 구조체 정의
 typedef struct {
@@ -287,7 +293,7 @@ int main() {
                 double valid_data_ratio = calculate_valid_data_ratio(ssd); // 유효 데이터 비율 계산
 
                 printf("[Progress: %lu GiB] WAF: %.3f, TMP_WAF: %.3f, Utilization: %.3f\n", 8*(total_processed_size / SSD_SIZE), WAF, TMP_WAF, Utilization);
-                printf("GROUP 0[%d]: %.2f (ERASE: %lu)\n", used_block_count, valid_data_ratio, ssd->tmp_erase); // GROUP 0 출력과 유효 데이터 비율, ERASE 횟수 출력
+                printf("GROUP 0[%d]: %.6f (ERASE: %lu)\n", used_block_count, valid_data_ratio, ssd->tmp_erase); // GROUP 0 출력과 유효 데이터 비율, ERASE 횟수 출력
                 
                 // 다음 8GiB를 위한 processed_size 초기화
                 processed_size = 0;

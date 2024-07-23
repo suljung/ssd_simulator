@@ -36,7 +36,7 @@ Block size: 4MiB
 GC threshold: less than 3 free blocks
 
 Output: 출력 해야하는 정보
-
+          
 8GB 마다:
 [Progress: 8GiB] WAF: 1.012, TMP_WAF: 1.024, Utilization: 1.000
 GROUP 0[2046]: 0.02 (ERASE: 1030)

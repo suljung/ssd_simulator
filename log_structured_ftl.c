@@ -294,7 +294,7 @@ int main() {
             }
 
             // 50GiB의 배수가 될 때 TMP_WAF 초기화
-            if (tmp_processed_size >= 50L * 1024 * 1024 * 1024) {
+            if (tmp_processed_size >= 8L * 1024 * 1024 * 1024) {
 
                 // TMP_WAF 출력 후 tmp_gc_write, tmp_user_write 그리고 tmp_erase 초기화
                 free_tmp(ssd);
